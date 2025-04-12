@@ -1,6 +1,9 @@
 library ieee;
     use ieee.std_logic_1164.all;
 
+library unisim;
+    use unisim.vcomponents.all;
+
 entity mizar_z7 is
     port (
         -- Reference clock
@@ -19,29 +22,29 @@ entity mizar_z7 is
         PL_LED4 :   out std_logic;
 
         -- HDMI 1 (marked TX on board)
-        HDMI1_CLK_P   : inout std_logic;
-        HDMI1_CLK_N   : inout std_logic;
-        HDMI1_D0_P    : inout std_logic;
-        HDMI1_D0_N    : inout std_logic;
-        HDMI1_D1_P    : inout std_logic;
-        HDMI1_D1_N    : inout std_logic;
-        HDMI1_D2_P    : inout std_logic;
-        HDMI1_D2_N    : inout std_logic;
-        HDMI1_HPD     : inout std_logic;
+        HDMI1_CLK_P   :   out std_logic;
+        HDMI1_CLK_N   :   out std_logic;
+        HDMI1_D0_P    :   out std_logic;
+        HDMI1_D0_N    :   out std_logic;
+        HDMI1_D1_P    :   out std_logic;
+        HDMI1_D1_N    :   out std_logic;
+        HDMI1_D2_P    :   out std_logic;
+        HDMI1_D2_N    :   out std_logic;
+        HDMI1_HPD     :    in std_logic;
         HDMI1_OUT_EN  :   out std_logic;
         HDMI1_I2C_SCL : inout std_logic;
         HDMI1_I2C_SDA : inout std_logic;
 
         -- HDMI 2 (marked RX on board)
-        HDMI2_CLK_P   : inout std_logic;
-        HDMI2_CLK_N   : inout std_logic;
-        HDMI2_D0_P    : inout std_logic;
-        HDMI2_D0_N    : inout std_logic;
-        HDMI2_D1_P    : inout std_logic;
-        HDMI2_D1_N    : inout std_logic;
-        HDMI2_D2_P    : inout std_logic;
-        HDMI2_D2_N    : inout std_logic;
-        HDMI2_HPD     : inout std_logic;
+        HDMI2_CLK_P   :    in std_logic;
+        HDMI2_CLK_N   :    in std_logic;
+        HDMI2_D0_P    :    in std_logic;
+        HDMI2_D0_N    :    in std_logic;
+        HDMI2_D1_P    :    in std_logic;
+        HDMI2_D1_N    :    in std_logic;
+        HDMI2_D2_P    :    in std_logic;
+        HDMI2_D2_N    :    in std_logic;
+        HDMI2_HPD     :   out std_logic;
         HDMI2_OUT_EN  :   out std_logic;
         HDMI2_I2C_SCL : inout std_logic;
         HDMI2_I2C_SDA : inout std_logic;
@@ -54,9 +57,9 @@ entity mizar_z7 is
         LP_LANE1_P :    in std_logic;
         LP_LANE1_N :    in std_logic;
         CAM_CLK    :   out std_logic;
-        CAM_GPIO   :   out std_logic;
-        CAM_SCL    :   out std_logic;
-        CAM_SDA    : inout std_logic;
+        -- CAM_GPIO   :   out std_logic;  -- PL_LED4 (NC)
+        -- CAM_SCL    :   out std_logic;  -- EEPROM_I2C_SCL
+        -- CAM_SDA    : inout std_logic;  -- EEPROM_I2C_SDA
 
         -- EEPROM
         EEPROM_I2C_SCL :   out std_logic;
@@ -142,6 +145,152 @@ end entity;
 
 architecture rtl of mizar_z7 is
 
+    signal s_hdmi1_clk : std_logic := '0';
+    signal s_hdmi1_d0  : std_logic := '0';
+    signal s_hdmi1_d1  : std_logic := '0';
+    signal s_hdmi1_d2  : std_logic := '0';
+
+    signal s_hdmi2_clk : std_logic;
+    signal s_hdmi2_d0  : std_logic;
+    signal s_hdmi2_d1  : std_logic;
+    signal s_hdmi2_d2  : std_logic;
+
+    signal s_lp_clk   : std_logic;
+    signal s_lp_lane0 : std_logic;
+    signal s_lp_lane1 : std_logic;
+
 begin
+
+    ----------------------------------------------------
+    --                 Signal Buffers                 --
+    ----------------------------------------------------
+
+    u_hdmi1_clk_obufds : OBUFDS
+        generic map (
+            IOSTANDARD => "TMDS_33",
+            SLEW       => "FAST"
+        )
+        port map (
+            I  => s_hdmi1_clk,
+            O  => HDMI1_CLK_P,
+            OB => HDMI1_CLK_N
+        );
+
+    u_hdmi1_d0_obufds : OBUFDS
+        generic map (
+            IOSTANDARD => "TMDS_33",
+            SLEW       => "FAST"
+        )
+        port map (
+            I  => s_hdmi1_d0,
+            O  => HDMI1_D0_P,
+            OB => HDMI1_D0_N
+        );
+
+    u_hdmi1_d1_obufds : OBUFDS
+        generic map (
+            IOSTANDARD => "TMDS_33",
+            SLEW       => "FAST"
+        )
+        port map (
+            I  => s_hdmi1_d1,
+            O  => HDMI1_D1_P,
+            OB => HDMI1_D1_N
+        );
+
+    u_hdmi1_d2_obufds : OBUFDS
+        generic map (
+            IOSTANDARD => "TMDS_33",
+            SLEW       => "FAST"
+        )
+        port map (
+            I  => s_hdmi1_d2,
+            O  => HDMI1_D2_P,
+            OB => HDMI1_D2_N
+        );
+
+    u_hdmi2_clk_ibufds : IBUFDS
+        generic map (
+            IOSTANDARD   => "TMDS_33",
+            DIFF_TERM    => TRUE,  -- No termination on PCB
+            IBUF_LOW_PWR => TRUE
+        )
+        port map (
+            O  => s_hdmi2_clk,
+            I  => HDMI2_CLK_P,
+            IB => HDMI2_CLK_N
+        );
+
+    u_hdmi2_d0_ibufds : IBUFDS
+        generic map (
+            IOSTANDARD   => "TMDS_33",
+            DIFF_TERM    => TRUE,  -- No termination on PCB
+            IBUF_LOW_PWR => TRUE
+        )
+        port map (
+            O  => s_hdmi2_d0,
+            I  => HDMI2_D0_P,
+            IB => HDMI2_D0_N
+        );
+
+    u_hdmi2_d1_ibufds : IBUFDS
+        generic map (
+            IOSTANDARD   => "TMDS_33",
+            DIFF_TERM    => TRUE,  -- No termination on PCB
+            IBUF_LOW_PWR => TRUE
+        )
+        port map (
+            O  => s_hdmi2_d1,
+            I  => HDMI2_D1_P,
+            IB => HDMI2_D1_N
+        );
+
+    u_hdmi2_d2_ibufds : IBUFDS
+        generic map (
+            IOSTANDARD   => "TMDS_33",
+            DIFF_TERM    => TRUE,  -- No termination on PCB
+            IBUF_LOW_PWR => TRUE
+        )
+        port map (
+            O  => s_hdmi2_d2,
+            I  => HDMI2_D2_P,
+            IB => HDMI2_D2_N
+        );
+
+    u_s_lp_clk_ibufdf : IBUFDS
+        generic map (
+            IOSTANDARD   => "LVDS_25",
+            DIFF_TERM    => FALSE,  -- Termination on PCB
+            IBUF_LOW_PWR => TRUE
+        )
+        port map (
+            O  => s_lp_clk,
+            I  => LP_CLK_P,
+            IB => LP_CLK_N
+        );
+
+    u_s_lp_lane0_ibufdf : IBUFDS
+        generic map (
+            IOSTANDARD   => "LVDS_25",
+            DIFF_TERM    => FALSE,  -- Termination on PCB
+            IBUF_LOW_PWR => TRUE
+        )
+        port map (
+            O  => s_lp_lane0,
+            I  => LP_LANE0_P,
+            IB => LP_LANE0_N
+        );
+
+    u_s_lp_lane1_ibufdf : IBUFDS
+        generic map (
+            IOSTANDARD   => "LVDS_25",
+            DIFF_TERM    => FALSE,  -- Termination on PCB
+            IBUF_LOW_PWR => TRUE
+        )
+        port map (
+            O  => s_lp_lane1,
+            I  => LP_LANE1_P,
+            IB => LP_LANE1_N
+        );
 
 end architecture;

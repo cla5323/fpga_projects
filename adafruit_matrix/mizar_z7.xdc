@@ -49,16 +49,17 @@ set_property -dict {PACKAGE_PIN W6   IOSTANDARD LVCMOS33} [get_ports HDMI2_I2C_S
 
 #################### MIPI CSI #############################
 
-set_property -dict {PACKAGE_PIN Y9    IOSTANDARD LVDS} [get_ports LP_CLK_P]
-set_property -dict {PACKAGE_PIN Y8    IOSTANDARD LVDS} [get_ports LP_CLK_N]
-set_property -dict {PACKAGE_PIN Y12   IOSTANDARD LVDS} [get_ports LP_LANE0_P]
-set_property -dict {PACKAGE_PIN Y13   IOSTANDARD LVDS} [get_ports LP_LANE0_N]
-set_property -dict {PACKAGE_PIN V11   IOSTANDARD LVDS} [get_ports LP_LANE1_P]
-set_property -dict {PACKAGE_PIN V10   IOSTANDARD LVDS} [get_ports LP_LANE1_N]
-set_property -dict {PACKAGE_PIN U9    IOSTANDARD LVDS} [get_ports CAM_CLK]
-set_property -dict {PACKAGE_PIN H17   IOSTANDARD LVDS} [get_ports CAM_GPIO]
-set_property -dict {PACKAGE_PIN A20   IOSTANDARD LVDS} [get_ports CAM_SCL]
-set_property -dict {PACKAGE_PIN E17   IOSTANDARD LVDS} [get_ports CAM_SDA]
+# See support article 43989
+set_property -dict {PACKAGE_PIN Y9    IOSTANDARD LVDS_25   DIFF_TERM FALSE} [get_ports LP_CLK_P]
+set_property -dict {PACKAGE_PIN Y8    IOSTANDARD LVDS_25   DIFF_TERM FALSE} [get_ports LP_CLK_N]
+set_property -dict {PACKAGE_PIN Y12   IOSTANDARD LVDS_25   DIFF_TERM FALSE} [get_ports LP_LANE0_P]
+set_property -dict {PACKAGE_PIN Y13   IOSTANDARD LVDS_25   DIFF_TERM FALSE} [get_ports LP_LANE0_N]
+set_property -dict {PACKAGE_PIN V11   IOSTANDARD LVDS_25   DIFF_TERM FALSE} [get_ports LP_LANE1_P]
+set_property -dict {PACKAGE_PIN V10   IOSTANDARD LVDS_25   DIFF_TERM FALSE} [get_ports LP_LANE1_N]
+set_property -dict {PACKAGE_PIN U9    IOSTANDARD LVCMOS33} [get_ports CAM_CLK]
+# set_property -dict {PACKAGE_PIN H17   IOSTANDARD LVDS} [get_ports CAM_GPIO]  -- PL_LED4 (NC)
+# set_property -dict {PACKAGE_PIN A20   IOSTANDARD LVDS} [get_ports CAM_SCL]   -- EEPROM_I2C_SCL
+# set_property -dict {PACKAGE_PIN E17   IOSTANDARD LVDS} [get_ports CAM_SDA]   -- EEPROM_I2C_SDA
 
 #################### EEPROM #############################
 
