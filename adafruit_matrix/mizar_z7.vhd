@@ -1,5 +1,6 @@
 library ieee;
     use ieee.std_logic_1164.all;
+    use ieee.numeric_std.all;
 
 library unisim;
     use unisim.vcomponents.all;
@@ -159,7 +160,126 @@ architecture rtl of mizar_z7 is
     signal s_lp_lane0 : std_logic;
     signal s_lp_lane1 : std_logic;
 
+    signal s_clk    : std_logic;
+    signal s_locked : std_logic;
+    signal s_fb_clk : std_logic;
+
+    signal s_rst_cnt : natural range 0 to 999 := 0;
+    signal s_rst     : std_logic := '1';
+
+    signal s_r1   : std_logic_vector(31 downto 0);
+    signal s_g1   : std_logic_vector(31 downto 0);
+    signal s_b1   : std_logic_vector(31 downto 0);
+    signal s_r2   : std_logic_vector(31 downto 0);
+    signal s_g2   : std_logic_vector(31 downto 0);
+    signal s_b2   : std_logic_vector(31 downto 0);
+    signal s_row  : std_logic_vector(3 downto 0);
+    signal s_busy : std_logic;
+
+    signal flag : std_logic_vector(3 downto 0);
+
 begin
+
+    u_pll : PLLE2_BASE
+        generic map (
+            CLKFBOUT_MULT => 16,
+            CLKIN1_PERIOD => 20.000,
+            CLKOUT0_DIVIDE => 128
+        )
+        port map (
+            CLKOUT0 => s_clk,
+            CLKFBOUT => s_fb_clk,
+            LOCKED => s_locked,
+            CLKIN1 => PL_CLK_50M,
+            PWRDWN => '0',
+            RST => '0',
+            CLKFBIN => s_fb_clk
+        );
+
+    -- 1000 clock reset
+    process (s_clk) is
+    begin
+        if rising_edge(s_clk) then
+            if s_locked = '1' then
+                if s_rst_cnt = 999 then
+                    s_rst <= '0';
+                else
+                    s_rst_cnt <= s_rst_cnt + 1;
+                    s_rst <= '1';
+                end if;
+            end if;
+        end if;
+    end process;
+
+    -- Really messy process to generate a test pattern
+    process (s_clk) is
+    begin
+        if rising_edge(s_clk) then
+            if s_rst = '1' then
+                s_r1  <= "00000000000000000000000000000001"; --"10011001100110011001100110011001";
+                s_g1  <= "00000000000000000000000000000000"; --"01010101010101010101010101010101";
+                s_b1  <= "00000000000000000000000000000000"; --"00110011001100110011001100110011";
+                s_r2  <= "00000000000000000000000000000000"; --"00110011001100110011001100110011";
+                s_g2  <= "00000000000000000000000000000000"; --"10101010101010101010101010101010";
+                s_b2  <= "00000000000000000000000000000000"; --"01100110011001100110011001100110";
+                s_row <= "0000";
+                flag <= "0000";
+            else
+                -- Should be low for one cycle since i_start tied high
+                if s_busy = '0' then
+                    flag <= std_logic_vector(unsigned(flag) + 1);
+                    -- s_r1 <= s_r1(0) & s_r1(31 downto 1);
+                    -- s_g1 <= s_g1(0) & s_g1(31 downto 1);
+                    -- s_b1 <= s_b1(0) & s_b1(31 downto 1);
+                    -- s_r2 <= s_r2(30 downto 0) & s_r2(31);
+                    -- s_g2 <= s_g2(30 downto 0) & s_g2(31);
+                    -- s_b2 <= s_b2(30 downto 0) & s_b2(31);
+                    if flag = "1111" then
+                        s_r1 <= s_r2;
+                        s_r2 <= s_r1;
+                    s_row <= std_logic_vector(unsigned(s_row) + 1);
+                    end if;
+                end if;
+            end if;
+        end if;
+    end process;
+
+    u_matrix_control : entity work.matrix_control
+        port map(
+            -- Clock and reset
+            i_clk => s_clk,
+            i_rst => s_rst,
+
+            -- FPGA data and control
+            i_r1    => s_r1,
+            i_g1    => s_g1,
+            i_b1    => s_b1,
+            i_r2    => s_r2,
+            i_g2    => s_g2,
+            i_b2    => s_b2,
+            i_row   => s_row,
+            i_start => '1',
+            o_busy  => s_busy,
+
+            -- Matrix control
+            o_r1  => GPIO1_5P,   -- pin 13
+            o_g1  => GPIO1_5N,   -- pin 14
+            o_b1  => GPIO1_6P,   -- pin 15
+            o_r2  => GPIO1_7P,   -- pin 17
+            o_g2  => GPIO1_7N,   -- pin 18
+            o_b2  => GPIO1_8P,   -- pin 19
+            o_a   => GPIO1_9P,   -- pin 21
+            o_b   => GPIO1_9N,   -- pin 22
+            o_c   => GPIO1_10P,  -- pin 23
+            o_d   => GPIO1_10N,  -- pin 24
+            o_clk => GPIO1_11P,  -- pin 25
+            o_lat => GPIO1_11N,  -- pin 26
+            o_oe  => GPIO1_12P   -- pin 27
+        );
+
+    GPIO1_6N  <= '0';  -- pin 16
+    GPIO1_8N  <= '0';  -- pin 20
+    GPIO1_12N <= '0';  -- pin 28
 
     ----------------------------------------------------
     --                 Signal Buffers                 --

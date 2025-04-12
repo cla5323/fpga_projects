@@ -1,6 +1,7 @@
 set system "mizar_z7"
 
 set file_list [list \
+"matrix_control.vhd" \
 "${system}.vhd" \
 ]
 
